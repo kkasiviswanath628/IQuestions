@@ -1,0 +1,372 @@
+ 
+ * ReactJS :
+ ===========
+  * React
+  * axios ( for calling API's)
+  * Redux
+  * Redux-dom
+  * Redux-thunk ( asynchronous request)
+  * react chrome extention
+  * redux devtools chrome extention
+  * jest (unit test)
+  * cssmodule
+  * enzyme ( unit test)
+  * Next.js for server-side rendered React
+  * React Router
+  * Firebase
+  
+  
+ * NodeJS :
+===========
+
+ * ExpressJs
+ * Nodemon 
+ * Multer ( file | Images | .. upload)
+ * Jwt ( js Web tokens)
+ * Bcrypt ( passwod bcrypt)
+ * Mysql 
+ * Validator
+ * Underscore
+ * Nodemailer
+ * Mongoose
+ * MongoDB
+ * Lodash
+ Templates :
+ -----------
+  * EJS
+  * PUG
+  * Handlebars
+  
+  
+Spring Batch :
+==============
+Dependencies :
+
+
+<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-core</artifactId>
+			<version>${spring.version}</version>
+		</dependency>
+
+		<!-- Spring jdbc, for database -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>${spring.version}</version>
+		</dependency>
+
+		<!-- Spring XML to/back object -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-oxm</artifactId>
+			<version>${spring.version}</version>
+		</dependency>
+
+		<!-- MySQL database driver -->
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>${mysql.driver.version}</version>
+		</dependency>
+
+		<!-- Spring Batch dependencies -->
+		<dependency>
+			<groupId>org.springframework.batch</groupId>
+			<artifactId>spring-batch-core</artifactId>
+			<version>${spring.batch.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.batch</groupId>
+			<artifactId>spring-batch-infrastructure</artifactId>
+			<version>${spring.batch.version}</version>
+		</dependency>
+
+		<!-- Spring Batch unit test -->
+		<dependency>
+			<groupId>org.springframework.batch</groupId>
+			<artifactId>spring-batch-test</artifactId>
+			<version>${spring.batch.version}</version>
+		</dependency>
+	
+----------------------------------------------------------------------
+job-batch-demo.xml:
+===================
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch
+		http://www.springframework.org/schema/batch/spring-batch-3.0.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+	">
+
+	<import resource="../config/context.xml" />
+	<import resource="../config/database.xml" />
+
+	<bean id="report" class="com.journaldev.spring.model.Report"
+		scope="prototype" />
+	<bean id="itemProcessor" class="com.journaldev.spring.CustomItemProcessor" />
+
+	<batch:job id="DemoJobXMLWriter">
+		<batch:step id="step1">
+			<batch:tasklet>
+				<batch:chunk reader="csvFileItemReader" writer="xmlItemWriter"
+					processor="itemProcessor" commit-interval="10">
+				</batch:chunk>
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+
+	<bean id="csvFileItemReader" class="org.springframework.batch.item.file.FlatFileItemReader">
+
+		<property name="resource" value="classpath:csv/input/report.csv" />
+
+		<property name="lineMapper">
+			<bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+				<property name="lineTokenizer">
+					<bean
+						class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+						<property name="names" value="id,firstname,lastname,dob" />
+					</bean>
+				</property>
+				<property name="fieldSetMapper">
+					<bean class="com.journaldev.spring.ReportFieldSetMapper" />
+
+					<!-- if no data type conversion, use BeanWrapperFieldSetMapper to map 
+						by name <bean class="org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper"> 
+						<property name="prototypeBeanName" value="report" /> </bean> -->
+				</property>
+			</bean>
+		</property>
+
+	</bean>
+
+	<bean id="xmlItemWriter" class="org.springframework.batch.item.xml.StaxEventItemWriter">
+		<property name="resource" value="file:xml/outputs/report.xml" />
+		<property name="marshaller" ref="reportMarshaller" />
+		<property name="rootTagName" value="report" />
+	</bean>
+
+	<bean id="reportMarshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+		<property name="classesToBeBound">
+			<list>
+				<value>com.journaldev.spring.model.Report</value>
+			</list>
+		</property>
+	</bean>
+
+
+</beans>
+
+----------------------------------------------------------------------
+context.xml:
+============
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-4.3.xsd">
+
+	<!-- stored job-meta in memory -->
+	<!--  
+	<bean id="jobRepository"
+		class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean">
+		<property name="transactionManager" ref="transactionManager" />
+	</bean>
+ 	 -->
+ 	 
+ 	 <!-- stored job-meta in database -->
+	<bean id="jobRepository"
+		class="org.springframework.batch.core.repository.support.JobRepositoryFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="databaseType" value="mysql" />
+	</bean>
+	
+	<bean id="transactionManager"
+		class="org.springframework.batch.support.transaction.ResourcelessTransactionManager" />
+	 
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+
+</beans>
+
+
+----------------------------------------------
+
+database.xml
+============
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+		http://www.springframework.org/schema/jdbc 
+		http://www.springframework.org/schema/jdbc/spring-jdbc-4.3.xsd">
+
+	<!-- connect to database -->
+	<bean id="dataSource"
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="url" value="jdbc:mysql://localhost:3306/batch" />
+		<property name="username" value="root" />
+		<property name="password" value="root" />
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.batch.support.transaction.ResourcelessTransactionManager" />
+
+	<!-- create job-meta tables automatically -->
+	<!-- <jdbc:initialize-database data-source="dataSource"> <jdbc:script location="org/springframework/batch/core/schema-drop-mysql.sql" 
+		/> <jdbc:script location="org/springframework/batch/core/schema-mysql.sql" 
+		/> </jdbc:initialize-database> -->
+</beans>
+
+--------------------------------------------------	
+  
+*  Batch processing is a processing mode which involves execution of series of automated complex jobs without user interaction. A batch process handles bulk data and runs for a long time.
+
+* Job Repository
+    * job launcher
+	* Job
+	* Step ( Item Reader , Item Processor  , Item Writer) 
+	  
+ Job :
+======
+
+We will configure a job in Spring Batch using an XML file or a Java class. Following is the XML configuration of a Job in Spring Batch.
+
+  <job id = "jobid"> 
+   <step id = "step1" next = "step2"/> 
+   <step id = "step2" next = "step3"/> 
+   <step id = "step3"/> 
+</job>
+
+* Restartable − In general, when a job is running and we try to start it again that is considered as restart and it will be started again. To avoid this, you need to set the restartable value to false as shown below.
+
+<job id = "jobid" restartable = "false" >
+
+</job>
+
+ * Step :
+ ========
+  A step is an independent part of a job which contains the necessary information to define and execute the job (its part).
+  
+  Readers, Writers, and Processors
+  --------------------------------
+  
+ * An item reader reads data into a Spring Batch application from a particular source, whereas an item writer writes data from the Spring Batch application to a particular destination.
+
+ * An Item processor is a class which contains the processing code which processes the data read into the spring batch. If the application reads "n" records, then the code in the processor will be executed on each record.
+
+ * When no reader and writer are given, a tasklet acts as a processor for SpringBatch. It processes only a single task. For example, if we are writing a job with a simple step in it where we read data from MySQL database and process it and write it to a file (flat), then our step uses −
+
+ * A reader which reads from MySQL database.
+
+ * A writer which writes to a flat file.
+
+ * A custom processor which processes the data as per our wish.
+ 
+ <job id = "helloWorldJob"> 
+   <step id = "step1"> 
+      <tasklet> 
+         <chunk reader = "mysqlReader" writer = "fileWriter" 
+            processor = "CustomitemProcessor" ></chunk> 
+      </tasklet> 
+   </step> 
+</ job>
+
+
+Spring Batch provides a long list of readers and writers. Using these predefined classes, we can define beans for them. We will discuss readers and writers in greater detail in the coming chapters.
+
+JobRepository :
+===============
+
+A Job repository in Spring Batch provides Create, Retrieve, Update, and Delete (CRUD) operations for the JobLauncher, Job, and Step implementations. We will define a job repository in an XML file as shown below.
+ 
+ <job-repository id = "jobRepository"/> 
+ 
+ In addition to id, there are some more options (optional) available. Following is the configuration of job repository with all the options and their default values.
+ 
+ <job-repository id = "jobRepository" 
+   data-source = "dataSource" 
+   transaction-manager = "transactionManager" 
+   isolation-level-for-create = "SERIALIZABLE" 
+   table-prefix = "BATCH_" 
+   max-varchar-length = "1000"/>
+   
+ * In-Memory Repository −
+ ========================
+ In case you don’t want to persist the domain objects of the Spring Batch in the database, you can configure the in-memory version of the jobRepository as shown below.  
+ 
+ 
+ <bean id = "jobRepository" 
+   class = "org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean ">
+   <property name = "transactionManager" ref = "transactionManager"/>
+</bean>
+
+JobLauncher :
+==============
+
+ JobLauncher is an interface which launces the Spring Batch job with the given set of parameters. SampleJoblauncher is the class which implements the JobLauncher interface. Following is the configuration of the JobLauncher.
+
+<bean id = "jobLauncher" 
+   class = "org.springframework.batch.core.launch.support.SimpleJobLauncher"> 
+   <property name = "jobRepository" ref = "jobRepository" /> 
+</bean>
+
+JobInstance :
+=============
+ A JobIinstance represents the logical run of a job; it is created when we run a job. Each job instance is differentiated by the name of the job and the parameters passed to it while running.
+
+ If a JobInstance execution fails, the same JobInstance can be executed again. Hence, each JobInstance can have multiple job executions.
+
+JobExecution and StepExecution :
+=================================
+ JobExecution and StepExecution are the representation of the execution of a job/step. They contain the run information of the job/step such as start time (of job/step), end time (of job/step).
+ 
+=========================================================
+
+The list of files in spring batch :
+====================================
+
+  * Configuration file (XML file)
+  * Tasklet/processor (Java class)
+  * Java class with setters and getters (Java class (bean))
+  * Mapper class (Java class)
+  * Launcher class (Java class)
+ 
+ * Configuration File
+ ====================
+The configuration file (XML) contains the following −
+
+The job and step definitions.
+
+Beans defining readers and writers.
+
+Definition of components like JobLauncher, JobRepository, Transaction Manager, and Data Source.
+
+In our examples, for better understanding, we have divided this in to two files the job.xml file (defines job, step, reader and writer) and context.xml file (job launcher, job repository, transaction manager and data source).
+
+ * Mapper Class:
+ ===============
+ 
+The Mapper class, depending upon the reader, implements interfaces such as row mapper, field set mapper, etc. It contains the code to get the data from the reader and to set it to a Java class with setter and getter methods (Java Bean).
+
+ * Java Bean Class:
+ ==================
+ 
+A Java class with setters and getters (Java bean) represents data with multiple values. It acts as a helper class. We will pass the data from one component (reader, writer, processer) to other in the form of object of this class.
+
+Tasklet/processor
+The Tasklet/processor class contains the processing code of the Spring Batch application. A processor is a class which accepts an object that contains the data read, processes it, and returns the processed data (in the form object).
+
+Launcher class
+This class (App.java) contains the code to launch the Spring Batch application.
+ 
+  
+   
